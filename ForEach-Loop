@@ -1,0 +1,85 @@
+$numbers = 1, 2, 3, 4, 5, 6
+foreach ($number in $numbers) {
+ Write-Host "Current number: $number"
+}
+
+foreach ($number in $numbers) {
+    $result = $number * 6
+
+
+ Write-Host "$number * 6 = $result"
+}
+
+
+$files = Get-ChildItem -Path "E:\Mod07\Labfiles"
+foreach ($file in $files) {
+    Write-Host $file.Name
+}
+
+New-ADOrganizationalUnit -Name "Disabled Users" -Path "DC=adatum,DC=com" -ProtectedFromAccidentalDeletion $false
+
+Get-ADUser -Filter 'Name -like "A*"' -SearchBase "OU=Marketing,DC=adatum,DC=com"
+
+Get-ADUser -Filter 'Name -like "A*"' -SearchBase "OU=Marketing,DC=adatum,DC=com" | Disable-ADUser
+
+Set-ADUser -Identity "Annie Conner" -Department "IT"
+
+$users = Get-ADUser -Filter 'Enabled -eq $false -and Department -eq "Marketing"' -SearchBase "OU=Marketing,DC=adatum,DC=com" -Properties Department
+
+Write-Host "--- Disabled Marketing Users ---"
+foreach ($user in $users) {
+    Write-Host $user.Name
+}
+
+
+$csvPath = "C:\DisabledMarketingUsers.csv"
+
+if (Test-Path $csvPath) { Remove-Item $csvPath }
+
+foreach ($user in $users) {
+    
+    [PSCustomObject]@{
+        Name = $user.Name
+        Department = $user.Department
+    } | Export-Csv -Path $csvPath -NoTypeInformation -Append
+}
+
+
+
+
+$disabledOU = "OU=Disabled Users,DC=adatum,DC=com"
+
+
+foreach ($user in $users) {
+    Move-ADObject -Identity $user.DistinguishedName -TargetPath $disabledOU
+}
+
+
+$marketingOU = "OU=Marketing,DC=adatum,DC=com"
+
+
+$usersToMoveBack = Get-ADUser -Filter * -SearchBase "OU=Disabled Users,DC=adatum,DC=com"
+
+
+foreach ($user in $usersToMoveBack) {
+        Move-ADObject -Identity $user.DistinguishedName -TargetPath $marketingOU
+        }
+
+
+$disabledOU = "OU=Disabled Users,DC=adatum,DC=com"
+$marketingOU = "OU=Marketing,DC=adatum,DC=com"
+
+# Let's assume we are moving them FROM Marketing TO Disabled Users again for this task
+$usersToMove = Get-ADUser -Filter 'Enabled -eq $false -and Department -eq "Marketing"' -SearchBase $marketingOU -Properties Department
+
+foreach ($user in $usersToMove) {
+        # Output a message indicating who is being moved
+            Write-Host "Moving user: $($user.Name) to the Disabled Users OU..." -ForegroundColor Cyan
+                
+        Move-ADObject -Identity $user.DistinguishedName -TargetPath $disabledOU
+                    }
+
+Write-Host "Move operation complete." -ForegroundColor Green
+
+
+
